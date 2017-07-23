@@ -4,6 +4,7 @@
 from wxbot import *
 import ConfigParser
 import json
+from mlogger import logger
 
 
 class TulingWXBot(WXBot):
@@ -19,7 +20,7 @@ class TulingWXBot(WXBot):
             self.tuling_key = cf.get('main', 'key')
         except Exception:
             pass
-        print 'tuling_key:', self.tuling_key
+        logger.info('tuling_key: %s', self.tuling_key)
 
     def tuling_auto_reply(self, uid, msg):
         if self.tuling_key:
@@ -36,13 +37,13 @@ class TulingWXBot(WXBot):
                 result = respond['url']
             elif respond['code'] == 302000:
                 for k in respond['list']:
-                    result = result + u"【" + k['source'] + u"】 " +\
+                    result = result + u"【" + k['source'] + u"】 " + \
                         k['article'] + "\t" + k['detailurl'] + "\n"
             else:
                 result = respond['text'].replace('<br>', '  ')
                 result = result.replace(u'\xa0', u' ')
 
-            print '    ROBOT:', result
+            #logger.info('    ROBOT: %s', result)
             return result
         else:
             return u"知道啦"
@@ -88,7 +89,7 @@ class TulingWXBot(WXBot):
                                 break
                 if is_at_me:
                     src_name = msg['content']['user']['name']
-                    reply = 'to ' + src_name + ': '
+                    reply = ('to ' + src_name + ': ') if src_name else ''
                     if msg['content']['type'] == 0:  # text message
                         reply += self.tuling_auto_reply(msg['content']['user']['id'], msg['content']['desc'])
                     else:
@@ -100,10 +101,8 @@ def main():
     bot = TulingWXBot()
     bot.DEBUG = True
     bot.conf['qr'] = 'png'
-
     bot.run()
 
 
 if __name__ == '__main__':
     main()
-

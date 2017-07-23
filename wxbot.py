@@ -17,6 +17,7 @@ import random
 from traceback import format_exc
 from requests.exceptions import ConnectionError, ReadTimeout
 import HTMLParser
+from mlogger import logger
 
 UNKONWN = 'unkonwn'
 SUCCESS = '200'
@@ -69,8 +70,8 @@ class SafeSession(requests.Session):
 class WXBot:
     """WXBot功能类"""
 
-    def __init__(self):
-        self.DEBUG = False
+    def __init__(self, debug=False):
+        self.DEBUG = debug
         self.uuid = ''
         self.base_uri = ''
         self.base_host = ''
@@ -532,7 +533,7 @@ class WXBot:
         mtype = msg['MsgType']
         content = HTMLParser.HTMLParser().unescape(msg['Content'])
         msg_id = msg['MsgId']
-
+        logger.info("%s, %s", mtype, msg_type_id)
         msg_content = {}
         if msg_type_id == 0:
             return {'type': 11, 'data': ''}
@@ -548,7 +549,7 @@ class WXBot:
             if not name:
                 name = self.get_group_member_prefer_name(self.get_group_member_name(msg['FromUserName'], uid))
             if not name:
-                name = 'unknown'
+                name = ''
             msg_content['user'] = {'id': uid, 'name': name}
         else:  # Self, Contact, Special, Public, Unknown
             pass
@@ -669,7 +670,9 @@ class WXBot:
             msg_content['type'] = 12
             msg_content['data'] = msg['Content']
             if self.DEBUG:
-                print '    [Unknown]'
+                logger.info("可能是红包: %s", json.dumps(msg, indent=4, encoding='utf-8'))
+                if msg['Content'].encode('utf-8') == "收到红包，请在手机上查看":
+                    logger.info("收到红包，请在手机上查看")
         elif mtype == 43:
             msg_content['type'] = 13
             msg_content['data'] = self.get_video_url(msg_id)
@@ -743,13 +746,13 @@ class WXBot:
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
             else:
                 msg_type_id = 99
-                user['name'] = 'unknown'
+                user['name'] = ''
             if not user['name']:
-                user['name'] = 'unknown'
+                user['name'] = ''
             user['name'] = HTMLParser.HTMLParser().unescape(user['name'])
 
             if self.DEBUG and msg_type_id != 0:
-                print u'[MSG] %s:' % user['name']
+                logger.info('[MSG] from %s:', user['name'])
             content = self.extract_msg_content(msg_type_id, msg)
             message = {'msg_type_id': msg_type_id,
                        'msg_id': msg['MsgId'],
@@ -1017,6 +1020,7 @@ class WXBot:
         data = json.dumps(params, ensure_ascii=False).encode('utf8')
         try:
             r = self.session.post(url, data=data, headers=headers)
+            logger.info("talk to: [%s] %s", dst, word)
         except (ConnectionError, ReadTimeout):
             return False
         dic = r.json()
@@ -1060,7 +1064,7 @@ class WXBot:
                 return None
             mid = json.loads(r.text)['MediaId']
             return mid
-        except Exception,e:
+        except Exception:
             return None
 
     def send_file_msg_by_uid(self, fpath, uid):
@@ -1470,7 +1474,7 @@ class WXBot:
         r = self.session.get(url)
         data = r.content
         fn = 'voice_' + msgid + '.mp3'
-        with open(os.path.join(self.temp_pwd,fn), 'wb') as f:
+        with open(os.path.join(self.temp_pwd, fn), 'wb') as f:
             f.write(data)
         return fn
 
